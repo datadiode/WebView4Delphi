@@ -4,6 +4,7 @@ interface
 
 uses
   Winapi.Windows, System.SysUtils, System.Types, System.UITypes,
+  System.IniFiles, System.Win.Registry,
   System.Classes, System.Variants, Winapi.Messages,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
   FMX.StdCtrls, FMX.Edit, FMX.Controls.Presentation, FMX.Layouts,
@@ -305,8 +306,30 @@ begin
   if IsIconic(TempHWND) then Result := TWindowState.wsMinimized;
 end;
 
+function GetFixedOpennessWebView2RuntimePath(): string;
+var
+  Registry: TRegistry;
+  IniFile: TIniFile;
+  InprocServer32, IniFilePath: string;
+begin
+  Registry := TRegistry.Create(KEY_READ);
+  IniFile := nil;
+  try
+    Registry.RootKey := HKEY_CLASSES_ROOT;
+    // False because we do not want to create it if it doesn't exist
+    Registry.OpenKey('CLSID\{C5AEB42F-7900-41E7-B86B-F0A9DF8A4780}\InprocServer32', False);
+    InprocServer32 := Registry.ReadString('');
+    IniFile := TIniFile.Create(ExtractFileDir(InprocServer32) + '\OpennessWebView2.ini');
+    Result := IniFile.ReadString('OpennessWebView2.dll', 'BrowserExecutableFolder', '');
+  finally
+    Registry.Free;
+    if IniFile <> nil then IniFile.Free;
+  end;
+end;
+
 initialization
   GlobalWebView2Loader                := TWVLoader.Create(nil);
+  GlobalWebView2Loader.BrowserExecPath:= GetFixedOpennessWebView2RuntimePath();
   GlobalWebView2Loader.UserDataFolder := ExtractFileDir(ParamStr(0)) + '\CustomCache';
   GlobalWebView2Loader.StartWebView2;
 
